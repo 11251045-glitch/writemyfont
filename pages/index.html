@@ -5,49 +5,179 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手寫字型產生器 by 字嗨</title>
 	<link rel="stylesheet" href="style.css">
+	<style>
+		/* ===== Tooltip ===== */
+		[data-tip] { position: relative; }
+		[data-tip]::after {
+			content: attr(data-tip);
+			position: absolute;
+			bottom: calc(100% + 8px);
+			left: 50%;
+			transform: translateX(-50%);
+			background: rgba(15,20,40,0.95);
+			color: #e0e0e0;
+			font-size: 11px;
+			white-space: nowrap;
+			padding: 4px 8px;
+			border-radius: 6px;
+			border: 1px solid #2a3a5a;
+			pointer-events: none;
+			opacity: 0;
+			transition: opacity 0.15s;
+			z-index: 9999;
+		}
+		[data-tip]:hover::after { opacity: 1; }
+
+		/* ===== Move buttons d-pad layout ===== */
+		#button-container {
+			display: grid !important;
+			grid-template-areas:
+				". up ."
+				"left . right"
+				". down .";
+			grid-template-columns: 44px 44px 44px;
+			grid-template-rows: 44px 44px 44px;
+			gap: 2px;
+			width: auto !important;
+			margin: 4px 0;
+		}
+		#clearButton  { grid-area: unset; position: absolute; left: -60px; top: 50%; transform: translateY(-50%); }
+		#undoButton   { grid-area: unset; position: absolute; right: -60px; top: 50%; transform: translateY(-50%); }
+		#moveUpButton    { grid-area: up; }
+		#moveLeftButton  { grid-area: left; }
+		#moveRightButton { grid-area: right; }
+		#moveDownButton  { grid-area: down; }
+
+		#dpad-wrapper {
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin: 4px 0;
+			width: 100%;
+		}
+		#dpad-wrapper #clearButton,
+		#dpad-wrapper #undoButton {
+			position: static;
+			transform: none;
+			margin: 0 10px;
+		}
+		#button-container span.butt {
+			width: 40px; height: 40px;
+			font-size: 20px !important;
+			padding: 0 !important;
+			border: 1px solid var(--border) !important;
+			box-shadow: 0 2px 6px var(--shadow) !important;
+			background: var(--btn-bg) !important;
+		}
+		#button-container span.butt:hover {
+			background: var(--btn-hover) !important;
+			border-radius: 8px !important;
+		}
+
+		/* center cell placeholder */
+		#dpad-center {
+			grid-column: 2; grid-row: 2;
+			width: 40px; height: 40px;
+			background: var(--surface2);
+			border-radius: 50%;
+			border: 1px solid var(--border);
+			opacity: 0.4;
+		}
+
+		/* ===== Toast ===== */
+		#toast-container {
+			position: fixed;
+			bottom: 80px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 9998;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 8px;
+			pointer-events: none;
+		}
+		.toast {
+			background: rgba(15,20,40,0.95);
+			color: #e0e0e0;
+			border: 1px solid #2a3a5a;
+			border-radius: 10px;
+			padding: 8px 20px;
+			font-size: 14px;
+			box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+			animation: toastIn 0.2s ease, toastOut 0.3s ease 1.7s forwards;
+			white-space: nowrap;
+		}
+		.toast.success { border-color: #2ecc71; color: #2ecc71; }
+		.toast.warn    { border-color: #e94560; color: #e94560; }
+		@keyframes toastIn  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+		@keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateY(-6px); } }
+
+		/* ===== Keyboard shortcut hint bar ===== */
+		#shortcut-hint {
+			font-size: 11px;
+			color: #55667a;
+			text-align: center;
+			margin: 2px 0 0 0;
+			letter-spacing: 0.02em;
+			user-select: none;
+		}
+	</style>
 </head>
 <body lang="zh-TW">
+
+	<!-- Toast container -->
+	<div id="toast-container"></div>
+
 	<div id="list-container">
 		<label for="listSelect">字表：</label>
 		<select id="listSelect"></select>
-		<span class="butt" id="canvasListButton">👓</span>
-		<span class="butt" id="findButton">🔍</span>
+		<span class="butt" id="canvasListButton" data-tip="字符列表">👓</span>
+		<span class="butt" id="findButton" data-tip="搜尋字符">🔍</span>
     </div>
 
     <div id="demo-container">
 		<span id="glyphName"></span>
 		<span id="charSeq"></span>
 		<span id="glyphNote"></span>
-		<span class="butt" id="prevButton">👈</span>
-		<span class="butt" id="nextButton">👉</span>
+		<span class="butt" id="prevButton" data-tip="上一個字 (←)">👈</span>
+		<span class="butt" id="nextButton" data-tip="下一個字 (→)">👉</span>
     </div>
+
 	<div id="canvas-container">
         <canvas id="gridCanvas" width="500" height="500"></canvas>
         <canvas id="drawingCanvas" width="500" height="500"></canvas>
     </div>
 
 	<div id="slider-container">
-		<div id="brushSelector"></div><div id="pressureButton" class="off"></div>
-		<span class="butt use" id="penButton">🖌️</span><span class="butt" id="eraserButton">🚿</span>
-		<input id="lineWidthSlider" type="range" min="2" max="36" value="12" />
+		<div id="brushSelector" data-tip="選擇筆刷"></div><div id="pressureButton" class="off" data-tip="筆壓開關"></div>
+		<span class="butt use" id="penButton" data-tip="畫筆 (P)">🖌️</span><span class="butt" id="eraserButton" data-tip="橡皮擦 (E)">🚿</span>
+		<input id="lineWidthSlider" type="range" min="2" max="36" value="12" title="調整筆刷大小" />
 		<label for="lineWidthSlider"><span id="lineWidthValue">12</span></label>
 	</div>
 
-	<div id="button-container">
-		<span class="butt" id="clearButton">🚮</span>
-		<span class="butt" id="moveLeftButton">⬅️</span>
-		<span class="butt" id="moveRightButton">➡️</span>
-		<span class="butt" id="moveUpButton">⬆️</span>
-		<span class="butt" id="moveDownButton">⬇️</span>
-		<span class="butt" id="undoButton">↩️</span>
-    </div>
+	<div id="shortcut-hint">P 畫筆 &nbsp;|&nbsp; E 橡皮擦 &nbsp;|&nbsp; Z 還原 &nbsp;|&nbsp; Del 清除 &nbsp;|&nbsp; ↑↓←→ 移動</div>
+
+	<div id="dpad-wrapper">
+		<span class="butt" id="clearButton" data-tip="清除 (Del)">🚮</span>
+		<div id="button-container">
+			<span class="butt" id="moveUpButton" data-tip="向上移動 (↑)">⬆️</span>
+			<span class="butt" id="moveLeftButton" data-tip="向左移動 (←)">⬅️</span>
+			<div id="dpad-center"></div>
+			<span class="butt" id="moveRightButton" data-tip="向右移動 (→)">➡️</span>
+			<span class="butt" id="moveDownButton" data-tip="向下移動 (↓)">⬇️</span>
+		</div>
+		<span class="butt" id="undoButton" data-tip="還原 (Z)">↩️</span>
+	</div>
 
 	<div id="navi-container">
-		<span class="butt" id="hintButton">💡</span>
-		<span class="butt" id="settingButton">⚙️</span>
+		<span class="butt" id="hintButton" data-tip="使用說明">💡</span>
+		<span class="butt" id="settingButton" data-tip="設定">⚙️</span>
 		<span id="spanDoneCount">-</span>
-		<span class="butt" id="downloadButton">💾</span>
+		<span class="butt" id="downloadButton" data-tip="下載字型">💾</span>
     </div>
+
 	<div id="progress-container">
 		<progress id="progress-bar" value="0" max="100"></progress>
 		<span id="progress-text">0%</span>
@@ -136,8 +266,6 @@
 
 			<div id="div-backup">
 			<br />
-			<br />
-			<br />
 			<hr />
 			<h3>完全清除字型資料</h3>
 			<button id="clearAllButton">清除字型資料（無法復原！）</button>
@@ -153,7 +281,7 @@
 	<div id="download-container" class="dialog">
 		<div class="dialog-body">
 			<span id="closeDownloadButton" class="close">×</span>
-			<h2 id="settings-title">下載</h2>
+			<h2>下載</h2>
 
 			<h3>下載字型</h3>
 			<input id="saveAsTester" type="checkbox" />
@@ -162,8 +290,7 @@
 			<button id="downloadFontButton">下載字型OTF檔案</button><br>
 			<h3>斗內作者</h3>
 			字型檔的權利均屬於您個人，不過如果您喜歡這個工具，請<a href="https://p.ecpay.com.tw/930AED7" target="_blank">考慮斗內支持作者的開發工作</a>。您的支持將有助於未來的更新和改進！
-			<br />
-			<br />
+			<br /><br />
 			<hr />
 			<h3>匯入先前備份的資料</h3>
 			<input type="file" id="importDataFile" accept=".txt" />
@@ -174,17 +301,6 @@
 			<p class="dummy"></p>
 		</div>
 	</div>
-
-	<!-- <div id="ads-container" class="dialog">
-		<div class="dialog-body">
-			<span id="closeAdsButton" class="close">×</span>
-			<h2 id="settings-title">活動訊息</h2>
-
-			<a href="https://justfont.kktix.cc/events/justlive-sp-handwriting" target="_blank"><img src="https://scontent.ftpe7-2.fna.fbcdn.net/v/t51.82787-15/524334290_18517592050031652_4988924142853493161_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=4_f30DCJ_y0Q7kNvwFkNbFE&_nc_oc=AdmSqGxScdADdQ1NmM4kvWbBBObR-SfccZmUwTCqwKu1DdOhvnRHH_y18zX1JxoD-DE&_nc_zt=23&_nc_ht=scontent.ftpe7-2.fna&_nc_gid=Cuq19om7GhnRY_sUL_tmEQ&oh=00_AfSf_pizGvvQljo3CRD_ihar0RFIUetYs1t1GuOX094dRw&oe=6888FE13" style="width: 320px" /></a><br>
-			歡迎<a href="https://justfont.kktix.cc/events/justlive-sp-handwriting" target="_blank">報名線上直播</a>，免費學習更多手寫字型製作訣竅與販售授權知識。
-			<p class="dummy"></p>
-		</div>
-	</div> -->
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 	<script src="https://opentype.js.org/dist/opentype.js"></script>
@@ -213,5 +329,66 @@
     <script src="pressure-drawing.js"></script>
     <script src="cglyphlist.js"></script>
     <script src="fontdrawer.js"></script>
+
+	<script>
+	/* ===== Toast System ===== */
+	function showToast(msg, type = '', duration = 2000) {
+		const container = document.getElementById('toast-container');
+		const toast = document.createElement('div');
+		toast.className = 'toast' + (type ? ' ' + type : '');
+		toast.textContent = msg;
+		container.appendChild(toast);
+		setTimeout(() => toast.remove(), duration);
+	}
+
+	/* ===== Keyboard Shortcuts ===== */
+	document.addEventListener('keydown', function(e) {
+		// Skip if typing in an input/textarea
+		const tag = document.activeElement.tagName.toLowerCase();
+		if (tag === 'input' || tag === 'textarea') return;
+		// Skip if any dialog is open
+		const anyOpen = [...document.querySelectorAll('.dialog')].some(d => d.style.display === 'block');
+		if (anyOpen) return;
+
+		switch(e.key) {
+			case 'z': case 'Z':
+				if (!e.ctrlKey && !e.metaKey) {
+					document.getElementById('undoButton')?.click();
+					showToast('↩ 還原');
+				}
+				break;
+			case 'p': case 'P':
+				document.getElementById('penButton')?.click();
+				showToast('🖌️ 畫筆模式');
+				break;
+			case 'e': case 'E':
+				document.getElementById('eraserButton')?.click();
+				showToast('🚿 橡皮擦模式');
+				break;
+			case 'Delete': case 'Backspace':
+				// Only Delete key (not Backspace) to avoid accidental clears
+				if (e.key === 'Delete') {
+					document.getElementById('clearButton')?.click();
+				}
+				break;
+			case 'ArrowLeft':
+				e.preventDefault();
+				document.getElementById('moveLeftButton')?.click();
+				break;
+			case 'ArrowRight':
+				e.preventDefault();
+				document.getElementById('moveRightButton')?.click();
+				break;
+			case 'ArrowUp':
+				e.preventDefault();
+				document.getElementById('moveUpButton')?.click();
+				break;
+			case 'ArrowDown':
+				e.preventDefault();
+				document.getElementById('moveDownButton')?.click();
+				break;
+		}
+	});
+	</script>
 </body>
 </html>
