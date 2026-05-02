@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手寫字型產生器 by 字嗨</title>
+    <title>手寫字型產生器</title>
 	<link rel="stylesheet" href="style.css">
 	<style>
 		/* ===== Tooltip ===== */
@@ -28,7 +28,7 @@
 		}
 		[data-tip]:hover::after { opacity: 1; }
 
-		/* ===== Move buttons d-pad layout ===== */
+		/* ===== D-pad ===== */
 		#button-container {
 			display: grid !important;
 			grid-template-areas:
@@ -41,8 +41,6 @@
 			width: auto !important;
 			margin: 4px 0;
 		}
-		#clearButton  { grid-area: unset; position: absolute; left: -60px; top: 50%; transform: translateY(-50%); }
-		#undoButton   { grid-area: unset; position: absolute; right: -60px; top: 50%; transform: translateY(-50%); }
 		#moveUpButton    { grid-area: up; }
 		#moveLeftButton  { grid-area: left; }
 		#moveRightButton { grid-area: right; }
@@ -74,8 +72,6 @@
 			background: var(--btn-hover) !important;
 			border-radius: 8px !important;
 		}
-
-		/* center cell placeholder */
 		#dpad-center {
 			grid-column: 2; grid-row: 2;
 			width: 40px; height: 40px;
@@ -114,7 +110,7 @@
 		@keyframes toastIn  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 		@keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateY(-6px); } }
 
-		/* ===== Keyboard shortcut hint bar ===== */
+		/* ===== Shortcut hint ===== */
 		#shortcut-hint {
 			font-size: 11px;
 			color: #55667a;
@@ -123,11 +119,26 @@
 			letter-spacing: 0.02em;
 			user-select: none;
 		}
+
+		/* ===== Hint page custom styles ===== */
+		.hint-section { margin: 1.2em 0; }
+		.hint-section h3 { color: #7eb8f7; margin-bottom: 0.4em; font-size: 1em; }
+		.hint-kbd {
+			display: inline-block;
+			background: var(--surface2, #1e2a4a);
+			border: 1px solid #2a3a5a;
+			border-radius: 5px;
+			padding: 1px 7px;
+			font-family: monospace;
+			font-size: 0.9em;
+			color: #e0e0e0;
+			margin: 1px 2px;
+		}
+		.hint-row { margin: 5px 0; line-height: 1.7; }
 	</style>
 </head>
 <body lang="zh-TW">
 
-	<!-- Toast container -->
 	<div id="toast-container"></div>
 
 	<div id="list-container">
@@ -135,20 +146,20 @@
 		<select id="listSelect"></select>
 		<span class="butt" id="canvasListButton" data-tip="字符列表">👓</span>
 		<span class="butt" id="findButton" data-tip="搜尋字符">🔍</span>
-    </div>
+	</div>
 
-    <div id="demo-container">
+	<div id="demo-container">
 		<span id="glyphName"></span>
 		<span id="charSeq"></span>
 		<span id="glyphNote"></span>
 		<span class="butt" id="prevButton" data-tip="上一個字 (←)">👈</span>
 		<span class="butt" id="nextButton" data-tip="下一個字 (→)">👉</span>
-    </div>
+	</div>
 
 	<div id="canvas-container">
-        <canvas id="gridCanvas" width="500" height="500"></canvas>
-        <canvas id="drawingCanvas" width="500" height="500"></canvas>
-    </div>
+		<canvas id="gridCanvas" width="500" height="500"></canvas>
+		<canvas id="drawingCanvas" width="500" height="500"></canvas>
+	</div>
 
 	<div id="slider-container">
 		<div id="brushSelector" data-tip="選擇筆刷"></div><div id="pressureButton" class="off" data-tip="筆壓開關"></div>
@@ -157,10 +168,10 @@
 		<label for="lineWidthSlider"><span id="lineWidthValue">12</span></label>
 	</div>
 
-	<div id="shortcut-hint">P 畫筆 &nbsp;|&nbsp; E 橡皮擦 &nbsp;|&nbsp; Z 還原 &nbsp;|&nbsp; Del 清除 &nbsp;|&nbsp; ↑↓←→ 移動</div>
+	<div id="shortcut-hint">P 畫筆 &nbsp;|&nbsp; E 橡皮擦 &nbsp;|&nbsp; Z 還原 &nbsp;|&nbsp; Del 清除 &nbsp;|&nbsp; ↑↓←→ 移動 &nbsp;|&nbsp; [ ] 調整筆寬</div>
 
 	<div id="dpad-wrapper">
-		<span class="butt" id="clearButton" data-tip="清除 (Del)">🚮</span>
+		<span class="butt" id="clearButton" data-tip="清除畫布 (Del)">🚮</span>
 		<div id="button-container">
 			<span class="butt" id="moveUpButton" data-tip="向上移動 (↑)">⬆️</span>
 			<span class="butt" id="moveLeftButton" data-tip="向左移動 (←)">⬅️</span>
@@ -168,7 +179,7 @@
 			<span class="butt" id="moveRightButton" data-tip="向右移動 (→)">➡️</span>
 			<span class="butt" id="moveDownButton" data-tip="向下移動 (↓)">⬇️</span>
 		</div>
-		<span class="butt" id="undoButton" data-tip="還原 (Z)">↩️</span>
+		<span class="butt" id="undoButton" data-tip="還原上一步 (Z)">↩️</span>
 	</div>
 
 	<div id="navi-container">
@@ -176,13 +187,14 @@
 		<span class="butt" id="settingButton" data-tip="設定">⚙️</span>
 		<span id="spanDoneCount">-</span>
 		<span class="butt" id="downloadButton" data-tip="下載字型">💾</span>
-    </div>
+	</div>
 
 	<div id="progress-container">
 		<progress id="progress-bar" value="0" max="100"></progress>
 		<span id="progress-text">0%</span>
 	</div>
 
+	<!-- 字符列表 -->
 	<div id="listup-container" class="dialog">
 		<div class="dialog-body">
 			<span id="closeListupButton" class="close">×</span>
@@ -191,47 +203,74 @@
 		</div>
 	</div>
 
+	<!-- 使用說明 -->
 	<div id="hint-container" class="dialog">
 		<div class="dialog-body">
 			<span id="closeHintButton" class="close">×</span>
-			<h2>提示 Ver <span id="version"></span></h2>
-			<ul id="hintContent">
-				<li>本工具由「<a href="https://zi-hi.com" target="_blank">字嗨！</a>」提供。</li>
-				<li>書寫的字表來自「<a href="https://justfont.com/jf7000" target="_blank">jf7000當務字集</a>」。</li>
-				<li>由於所有資料儲存在您瀏覽器本地端，若擔心被瀏覽器清除，建議定期用匯出功能備份資料。</li>
-				<li>建議每個字寫好後，就立刻調整位置（漢字原則上置中），這樣可避免事後調整困難。</li>
-				<li>半形文字一律輸出成比例寬，故水平方向位置會被忽略。背景的紅線是基線的參考位置。</li>
-				<li>全形的英數字會使用半形英數字自動產生。</li>
-				<li>當所需的字符齊全時，系統會自動處理直排、組合文字的設定。</li>
-				<li>請注意因為技術的限制，目前本系統所產生的OTF檔案，雖可勉強安裝運作，但並非正確的CID格式，可能在Adobe軟體無法正確識別為CJK字型。</li>
-				<li>本服務所生成的字型檔，若使用上造成任何影響，本服務與作者不負任何責任。</li>
-				<li>本系統並未蒐集任何使用者筆跡或其他用戶資訊。但若要公開您的字型檔時，請自行評估筆跡公開的風險。</li>
-				<li>本工具不定期更新，雖然力求盡可能支援先前的版本，但要維護多種舊機制相各種環境有所困難，難以盡善盡美。由於所有版本程式碼都是開源的，可自行從GitHub上使用。若有技術支援需求，可與作者聯絡（可能須付費）。</li>
-				<li>本專案GitHub頁面在<a href="https://github.com/ButTaiwan/writemyfont" target="_blank">這裡</a>，在此可查閱更多資訊。<p class="dummy"></p></li>
-			</ul>
+			<h2>使用說明 <span style="font-size:0.6em; color:#55667a;">ver <span id="version"></span></span></h2>
+
+			<div class="hint-section">
+				<h3>🖊️ 基本操作</h3>
+				<div class="hint-row">用手指或觸控筆在畫布上書寫。每個格子對應一個字符，寫完按 👉 進入下一個。</div>
+				<div class="hint-row">寫完每個字後建議立刻用方向鍵調整位置，讓字盡量置中於框內。</div>
+				<div class="hint-row">底部進度條會顯示目前完成的字符數量。</div>
+			</div>
+
+			<div class="hint-section">
+				<h3>⌨️ 鍵盤快捷鍵</h3>
+				<div class="hint-row"><span class="hint-kbd">P</span> 切換為畫筆 &nbsp; <span class="hint-kbd">E</span> 切換為橡皮擦</div>
+				<div class="hint-row"><span class="hint-kbd">Z</span> 還原上一筆 &nbsp; <span class="hint-kbd">Del</span> 清除整格</div>
+				<div class="hint-row"><span class="hint-kbd">↑</span><span class="hint-kbd">↓</span><span class="hint-kbd">←</span><span class="hint-kbd">→</span> 移動字符位置</div>
+				<div class="hint-row"><span class="hint-kbd">[</span> 縮小筆寬 &nbsp; <span class="hint-kbd">]</span> 放大筆寬</div>
+			</div>
+
+			<div class="hint-section">
+				<h3>💾 資料儲存</h3>
+				<div class="hint-row">所有筆跡資料儲存在你的瀏覽器本地端（IndexedDB），不會上傳到任何伺服器。</div>
+				<div class="hint-row">建議定期從「下載」頁面備份資料，避免清除瀏覽器資料時遺失。</div>
+				<div class="hint-row">若換裝置或換瀏覽器，可用匯出／匯入功能轉移進度。</div>
+			</div>
+
+			<div class="hint-section">
+				<h3>🔤 字型輸出</h3>
+				<div class="hint-row">字符齊全後可下載 OTF 格式字型檔，安裝後即可在各軟體使用。</div>
+				<div class="hint-row">半形英數字不需手寫，系統會自動從全形版本產生。</div>
+				<div class="hint-row">輸出前建議勾選「測試輸出」加上流水號，避免系統快取造成安裝後無效果。</div>
+				<div class="hint-row" style="color:#aaa; font-size:0.88em;">⚠️ 產生的 OTF 非標準 CID 格式，部分 Adobe 軟體可能無法正確識別為 CJK 字型。</div>
+			</div>
+
+			<div class="hint-section">
+				<h3>🎨 筆刷與筆壓</h3>
+				<div class="hint-row">左上角的筆刷圖示可切換不同筆刷樣式。</div>
+				<div class="hint-row">支援觸控筆筆壓，可在設定中調整筆壓敏感度。</div>
+				<div class="hint-row">不支援筆壓的裝置也可啟用「筆壓模擬」效果。</div>
+			</div>
+
+			<p class="dummy"></p>
 		</div>
 	</div>
 
+	<!-- 設定 -->
 	<div id="settings-container" class="dialog">
 		<div class="dialog-body">
 			<span id="closeSettingsButton" class="close">×</span>
 			<h2 id="settings-title">設定</h2>
-			<span class="note" id="span-welcome">在開始書寫之前，先來設定一些基本資訊吧！這些設定值之後都能再更改。<br>提醒您，若您是在App內的瀏覽器開啟本頁，建議用系統瀏覽器開啟，避免資料遺失！</span>
+			<span class="note" id="span-welcome">在開始書寫之前，先設定字型的基本資訊。這些設定之後都能再更改。<br>若在 App 內建瀏覽器開啟本頁，建議改用系統瀏覽器，避免資料遺失。</span>
 
 			<h3>字型英文名稱</h3>
 			<input id="fontNameEng" type="text" placeholder="請輸入英文名稱" maxlength="24" />
 
 			<h3>字型中文名稱</h3>
 			<input id="fontNameCJK" type="text" placeholder="請輸入中文名稱" maxlength="10" />
-			
+
 			<h3>縮放率</h3>
 			<input id="scaleRateSlider" type="range" min="80" max="200" value="100" />
 			<span id="scaleRateValue">100%</span>
-			<span class="note">手寫時為了避免超框，容易不經意把字寫得偏小。這裡可以調整文字框的尺寸。</span>
+			<span class="note">手寫時容易不自覺寫小，可調整文字框尺寸來補正。</span>
 
 			<h3>我的字就是小</h3>
 			<input id="smallModeCheck" type="checkbox" />
-			<span class="note">適合寫字真的很小的人。</span>
+			<span class="note">字真的很小的人適用。</span>
 
 			<h3>背景格線樣式</h3>
 			<select id="gridTypeSelect">
@@ -245,7 +284,7 @@
 
 			<h3>中文字不等寬</h3>
 			<input id="noFixedWidthFlag" type="checkbox" />
-			<span class="note">設定為不等寬會更像手寫字型，但可能不適合用於直排。</span>
+			<span class="note">不等寬更像手寫感，但不適合直排使用。</span>
 
 			<h3>筆壓敏感度（實驗中）</h3>
 			<select id="pressureEffectSelect">
@@ -254,15 +293,15 @@
 				<option value="enhance">增強（省力）</option>
 				<option value="enhancex">再增強（更省力）</option>
 			</select>
-			<span class="note">本選項僅對有筆壓的設備有效。目前尚在調整中，未來修改可能無法維持舊版相容性。</span>
+			<span class="note">僅對有筆壓的設備有效。</span>
 
 			<h3>啟用觸控筆傾斜角</h3>
 			<input id="penAngleMode" type="checkbox" />
-			<span class="note">本選項僅對有傾斜角的設備有效。</span>
+			<span class="note">僅對支援傾斜角的設備有效。</span>
 
 			<h3>啟用舊筆壓模式（不建議）</h3>
 			<input id="pressureDrawingEnabled" type="checkbox" />
-			<span class="note">舊筆壓模式無法支援筆刷功能。</span>
+			<span class="note">舊筆壓模式不支援筆刷功能。</span>
 
 			<div id="div-backup">
 			<br />
@@ -278,6 +317,7 @@
 		</div>
 	</div>
 
+	<!-- 下載 -->
 	<div id="download-container" class="dialog">
 		<div class="dialog-body">
 			<span id="closeDownloadButton" class="close">×</span>
@@ -286,12 +326,10 @@
 			<h3>下載字型</h3>
 			<input id="saveAsTester" type="checkbox" />
 			<label for="saveAsTester">測試輸出</label>
-			<span class="note">勾選測試輸出，字型名稱會加上流水號。避免系統快取造成在電腦上無法正常安裝使用的問題。</span>
-			<button id="downloadFontButton">下載字型OTF檔案</button><br>
-			<h3>斗內作者</h3>
-			字型檔的權利均屬於您個人，不過如果您喜歡這個工具，請<a href="https://p.ecpay.com.tw/930AED7" target="_blank">考慮斗內支持作者的開發工作</a>。您的支持將有助於未來的更新和改進！
-			<br /><br />
-			<hr />
+			<span class="note">勾選後字型名稱會加流水號，避免系統快取導致安裝後無效果。</span>
+			<button id="downloadFontButton">下載字型 OTF 檔案</button><br>
+
+			<br /><hr />
 			<h3>匯入先前備份的資料</h3>
 			<input type="file" id="importDataFile" accept=".txt" />
 			<br />
@@ -302,9 +340,9 @@
 		</div>
 	</div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 	<script src="https://opentype.js.org/dist/opentype.js"></script>
-    <script src="potrace.js"></script>
+	<script src="potrace.js"></script>
 	<script>
 		const fdrawer = {
 			dbName: 'FontDrawerDB',
@@ -326,12 +364,12 @@
 		};
 	</script>
 
-    <script src="pressure-drawing.js"></script>
-    <script src="cglyphlist.js"></script>
-    <script src="fontdrawer.js"></script>
+	<script src="pressure-drawing.js"></script>
+	<script src="cglyphlist.js"></script>
+	<script src="fontdrawer.js"></script>
 
 	<script>
-	/* ===== Toast System ===== */
+	/* ===== Toast ===== */
 	function showToast(msg, type = '', duration = 2000) {
 		const container = document.getElementById('toast-container');
 		const toast = document.createElement('div');
@@ -343,10 +381,8 @@
 
 	/* ===== Keyboard Shortcuts ===== */
 	document.addEventListener('keydown', function(e) {
-		// Skip if typing in an input/textarea
 		const tag = document.activeElement.tagName.toLowerCase();
 		if (tag === 'input' || tag === 'textarea') return;
-		// Skip if any dialog is open
 		const anyOpen = [...document.querySelectorAll('.dialog')].some(d => d.style.display === 'block');
 		if (anyOpen) return;
 
@@ -365,11 +401,8 @@
 				document.getElementById('eraserButton')?.click();
 				showToast('🚿 橡皮擦模式');
 				break;
-			case 'Delete': case 'Backspace':
-				// Only Delete key (not Backspace) to avoid accidental clears
-				if (e.key === 'Delete') {
-					document.getElementById('clearButton')?.click();
-				}
+			case 'Delete':
+				document.getElementById('clearButton')?.click();
 				break;
 			case 'ArrowLeft':
 				e.preventDefault();
@@ -387,6 +420,30 @@
 				e.preventDefault();
 				document.getElementById('moveDownButton')?.click();
 				break;
+			case '[':
+			case '【': {
+				// 縮小筆寬
+				const slider = document.getElementById('lineWidthSlider');
+				if (slider) {
+					const newVal = Math.max(parseInt(slider.min), parseInt(slider.value) - 2);
+					slider.value = newVal;
+					slider.dispatchEvent(new Event('input'));
+					showToast('筆寬 ' + newVal);
+				}
+				break;
+			}
+			case ']':
+			case '】': {
+				// 放大筆寬
+				const slider = document.getElementById('lineWidthSlider');
+				if (slider) {
+					const newVal = Math.min(parseInt(slider.max), parseInt(slider.value) + 2);
+					slider.value = newVal;
+					slider.dispatchEvent(new Event('input'));
+					showToast('筆寬 ' + newVal);
+				}
+				break;
+			}
 		}
 	});
 	</script>
